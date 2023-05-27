@@ -1,0 +1,226 @@
+- Installing docker on Ubunto
+sudo apt-get remove docker docker-engine docker.io containerd runc
+sudo apt-get update
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+sudo mkdir -p /etc/apt/keyrings
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo docker run hello-world
+
+- Allowing non-root user to run Docker commands:
+sudo groupadd docker
+sudo gpasswd -a ${USER} docker
+sudo service docker restart (this command might be optional or after the next one)
+newgrp docker
+
+- Logining into the Dockerhub
+docker login
+PS: use your docker it and not the e-mail you use when accessing eht dockerhub in thw web browseer. The password is the same
+
+- Building Docker images from dockerfiles:
+docker build -t <image-name>:<image-version> <path-to-dockerfile>
+
+- Listing local Docker images:
+docker images
+docker images <image name>
+
+- List Docker containers
+docker ps -a
+
+- Searching Docker images
+docker search <image key name>:<image version>
+docker search <image key name>:<image version> --filter "<filter-key>=<filter-value>"
+docker search <image key name>:<image version> --format "table {{.Name}}\t{{.Description}}\t{{.IsOfficial}}"
+
+- Pulling Docker images from Docker registry (dockerhub)
+docker pull <image name>
+docker pull <image name>:<image-version>
+docker pull --all-tags <image-name>
+
+- Pushing Docker images to Dockerhub
+docker tag <base-img-name>:<base-img-version> <docker-id>/<new-img-name>:<new-img-version>
+docker push <docker-id>/<docker-img-name>:<docker-img-version>
+
+- Removindo a Docker image
+docker image rm <img-id>
+docker image rm <img-name>:<img-version>
+docker image rmi <img-id>
+docker image rmi <img-id> --force
+docker image rmi <img-name>:<img-version>
+
+- PLUS - Debug Purposes - Local Images
+docker inspect <img-name>
+docker inspect <img-name>:<img-version>
+docker history <img-name>
+docker history <img-name>:<img-version>
+
+- Creating a Docker Container
+docker container create -it --name <user-def-container-name> <img-name>:<img-version>
+
+- Listing Docker Containers
+docker ps -a
+
+- Running Docker Containers:
+docker run -itd --name <user-defined-img-name> <docker-img-name>
+docker run -itd --rm --name <user-defined-img-name> <docker-img-name>
+Info: -itd means Interactive, Teletype enabled and Detached
+Info: --rm will make sure the container will be removed once it stops running. Without the --rm when the container stops it is kept in stop / exit state and can be restared later
+Info: You can use the -p to map a host port to a container: -p <host port> : <container port>
+Info: You can use -P to let docker map the ports itself
+Info: You can use --volume to create and / or attach a volume to the container
+
+- Stopping Docker containers
+docker container stop <container-name or id>
+
+- Renaming Docker Containers
+docker container rename <current-name> <new-name>
+
+- Starting Docker Containers
+docker container start <container-name-or-id>
+
+- Attaching Docker Containerscker 
+docker container attach <container-name-or-id>
+
+- Executing commands in Docker Containers
+docker exec -it <container-name-or-id> <command-to-be-executed>
+
+- Discovering Docker Container Exposed Port
+docker container port <container-name-or-id>
+
+- Removnig Docker Containers
+docker container rm <container-name-or-id> --force
+docker container kill --signal=SIGTERM <container-name-or-id>
+docker container prune
+
+- Listing Docker Containers Networks
+docker network ls
+docker network ls --filter <filter-field>=<filter-value>
+
+- Creating Docker Containers Network
+docker network create --driver <driver-name> <usr-def-network-name>
+docker network create --driver bridge --subnet=<subnet> --ip-range=<ip-range> <usr-def-network-name>
+
+- Connection a Docker Container in a existing network
+docker network connect <network-name> <container-name>
+
+- Disconnecting a Docker Container frrom a network
+docker network disconnect <network-name> <container-name>
+
+- Creating a Volume
+docker volume create --name <volume-name>
+- Removing Volume
+docker volume rm <volume-name>
+
+
+- Installing Docker Compose
+sudo curl -L https://github.com/docker/compose/releases/download/<DOCKER-COMPOSE-VERSION-HERE>/docker-compose-$(uname -s)-$(uname -m) -o /usr/bin/docker-compose
+sudo chmod +x /usr/bin/docker-compose
+Info: The working directory might be diffente than the one specified in the command lines. If so, you'd get an error something like "no such file or directory" specifying the correct working directory. You can adapt the commands and run it over again or maybe just move the files to the correct directory.
+
+
+- Running a Docker Compose
+docker compose up
+docker compose -d up
+
+- Checking all containers running with Docker Compose
+docker-compose ps
+
+- Display all the running process in the containers running with Docker Compose
+docker-compose top
+
+- Stopping all containers running with Docker Compose
+docker-compose down
+
+- Installing Docker Machine
+base=https://github.com/docker/machine/releases/download/v0.16.2 && curl -L $base/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && sudo install /tmp/docker-machine /usr/bin/docker-machine
+Info: check the installation running docker-machine version
+
+- Create a Docker Machine
+docker-machine create --driver virtualbox <machine-name-here>
+Info: You'll need to have Virtualbox installed here. I had headaches, problems creating the docker machines and I'm not sure about how I got the problems solved.
+
+- Listing the Docker Machine
+docker-machine ls
+
+- Stopping the Docker Machine
+docker-machine stop <docker-machine-name>
+
+- Starting the Docker Machine (previously created)
+docker-machine start <docker-machine-name>
+
+- Getting a node IP
+docker-machine ip <node-name>
+
+- Inspecting a Docker Machine
+docker-machine inspect <docker-machine-name>
+
+- Accessing the Docker Machine shell
+docker-machine ssh <docker-machine-name>
+
+- Initializing a Docker Swarm Cluster
+docker swarm init --advertise-addr <docker-machine-ip>
+Info: Running this command succeffuly you'll get a response containing the command to join another docker machines in the swarm cluster
+
+- Joinin another Docker Machine into the Swarm Cluster
+docker swarm join --token <join-token> <manager-ip>:<manager-port-to-cluster>
+
+- Retrievin the the Join toker from the Swarm Manager
+docker swarm join-token worker
+
+- Listing a docker swarm cluster nodes
+docker node ls
+Info: run it on the docker machine manager node. It doesn work on worke nodes
+
+- Inspecting Swarm cluster manager node
+docker node inspect --pretty self
+
+- Inspecting Swarm cluster worker node
+docker node inspect --pretty <worker-node-name>
+
+- Creating a swarm service
+docker service create --name <service-name> -p <container-port>:<external-port> --replicas <number-of-replicas> <image-name>:<image-version>
+
+- Listing Swarm Services
+docker service ls
+
+- Checking in which docker machine the service/container is running
+docker service ps <service-name>
+
+- Inspecting a swarm service
+docker service inspect <service-name>
+
+- Checking the services running on the node
+docker ps -a
+Info: It'll show the running containers/services just on the specific node where you've execute the command
+
+- Draining a swarm node from the cluster
+docker node update --availability drain <node-name>
+Info: It sets the availability of the node to drain which means the node wont receive any service request or to executes tasks
+
+- Leaving a node out of the cluster
+docker swarm leave
+info: it must be executed on the node we want to take out of the cluste. Once executed the status of the node in the cluster is set to down. 
+
+- Removing a node from the cluster
+docker node rm <node-name>
+Info: it removes completely the node from the cluster
+
+- Scalling swarm service
+docker service scale <existing-service-name>=<number of desired replicas>
+
+- Updating the service in a swarm cluster]
+docker service update --image <image-name-to-update-to>:<image-version> <service-name-that-will-be-updated>
+
+- Removing a docker service from the swarm cluster
+docker service rm <service-name>
