@@ -1,0 +1,5 @@
+/terraform-cloud-infraestructure/.terraform
+/terraform-cloud-infraestructure/.terraform.lock.hcl
+/terraform-cloud-infraestructure/aws-iam-authenticator
+/terraform-cloud-infraestructure/kubectl
+/terraform-cloud-infraestructure/kubectl.sha256
