@@ -3,3 +3,10 @@ aws eks --region $(terraform output -raw region) update-kubeconfig     --name $(
 
 Get nodes
 kubectl get nodes
+
+Describe nodes
+kubectl describe nodes <node-name>
+
+Get pods
+kubectl get pods
+kubectl get pods -n <name-space>

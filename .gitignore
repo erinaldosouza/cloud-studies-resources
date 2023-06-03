@@ -3,3 +3,9 @@
 /terraform-cloud-infraestructure/aws-iam-authenticator
 /terraform-cloud-infraestructure/kubectl
 /terraform-cloud-infraestructure/kubectl.sha256
+/terraform-kubernets-resources/.terraform/
+/terraform-kubernets-resources/.terraform.lock.hcl
+/terraform-cloud-infraestructure/public-eks-cluster/.terraform/
+/terraform-cloud-infraestructure/private-eks-cluster/.terraform/
+/terraform-cloud-infraestructure/modules/private-eks-cluster/.terraform/
+/terraform-cloud-infraestructure/modules/public-eks-cluster/.terraform/
