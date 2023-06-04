@@ -10,10 +10,12 @@ locals {
 module "main_vpc" {
   source  = "./modules/main-vpc"
 
+  vpc_name             = var.vpc_name
   azs                  = var.azs
   vpc_cidr             = var.vpc_cidr
   private_subnets_cidr = var.private_subnets_cidr
   public_subnets_cidr  = var.public_subnets_cidr
+  intra_subnets_cidr   = var.intra_subnets_cidr
 
 }
 
@@ -32,13 +34,14 @@ module "public_eks" {
   public_k8s_subnet_ids = module.main_vpc.public_subnet_ids
 
 }
-/*
+
 module "msk_cluster" {
-  source = "./modules/msk-cluster"
+  source = "./modules/intra-msk-cluster"
 
-  vpc_id = module.main_vpc.vpc_id
-  kafka_cluster_name = var.kafka_cluster_name
-  kafka_version = var.msk_kafka_version
-  subnet_ids = var.kafka_subnet_ids
-}*/
+  vpc_id                  = module.main_vpc.vpc_id
+  msk_kafka_subnet_ids    = module.main_vpc.intra_subnet_ids
+  msk_kafka_cluster_name  = var.msk_kafka_cluster_name
+  msk_kafka_version       = var.msk_kafka_version
+  msk_kafka_instance_type = var.msk_kafka_instance_type
 
+}

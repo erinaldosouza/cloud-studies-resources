@@ -9,6 +9,11 @@ description = "private subnet ids"
 value       = module.vpc.private_subnets
 }
 
+output "intra_subnet_ids" {
+  description = "private intra ids"
+  value       = module.vpc.intra_subnets
+}
+
 output "vpc_id" {
   description = "VPC Id"
   value       = module.vpc.vpc_id

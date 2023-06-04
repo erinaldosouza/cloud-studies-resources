@@ -13,4 +13,3 @@
 /terraform-cloud-infraestructure/modules/main-vpc/.terraform.lock.hcl
 /terraform-cloud-infraestructure/modules/private-eks-cluster/.terraform.lock.hcl
 /terraform-cloud-infraestructure/modules/public-eks-cluster/.terraform.lock.hcl
-/terraform-cloud-infraestructure/modules/main-vpc/.terraform/

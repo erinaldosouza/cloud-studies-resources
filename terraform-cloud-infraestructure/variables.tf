@@ -10,20 +10,26 @@ variable "azs" {
   default     = []
 }
 
-variable "private_subnets_cidr" {
-  description = "Value of k8s private subnets"
-  type        = list(any)
-  default     = []
-}
-
 variable "vpc_cidr" {
   description = "VPC cidr"
   type        = string
   default     = ""
 }
 
+variable "private_subnets_cidr" {
+  description = "Value of k8s private subnets"
+  type        = list(any)
+  default     = []
+}
+
 variable "public_subnets_cidr" {
   description = "Value of k8s public subnets"
+  type        = list(any)
+  default     = []
+}
+
+variable "intra_subnets_cidr" {
+  description = "Value of intra subnets"
   type        = list(any)
   default     = []
 }
@@ -59,17 +65,18 @@ variable "vpc_id" {
   default    = ""
 }
 
-variable "kafka_subnet_ids" {
-  description = "Value of kafka subnet ids"
-  type        = list(any)
-  default     = []
-}
-
-variable "kafka_cluster_name" {
+variable "msk_kafka_cluster_name" {
   description = "Name of the kafka cluster"
   type        = string
   default     = ""
 }
+
+variable "msk_kafka_instance_type" {
+  description = "Kafka instance type"
+  type        = string
+  default     = ""
+}
+
 variable "eks_master_roles" {
 
   description = "Roles who masters the clusters"

@@ -16,6 +16,13 @@ variable "public_subnets_cidr" {
   default     = []
 }
 
+variable "intra_subnets_cidr" {
+  description = "Value of intra subnets"
+  type        = list(any)
+  default     = []
+}
+
+
 variable "vpc_cidr" {
   description = "VPC cidr"
   type        = string
