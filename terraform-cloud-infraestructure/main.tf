@@ -45,3 +45,7 @@ module "msk_cluster" {
   msk_kafka_instance_type = var.msk_kafka_instance_type
 
 }
+
+module "apigateway" {
+  source  = "./modules/api-gateway"
+}
