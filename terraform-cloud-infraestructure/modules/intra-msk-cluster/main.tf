@@ -8,6 +8,7 @@ module "msk-apache-kafka-cluster" {
   kafka_version        = var.msk_kafka_version
   name                 = var.msk_kafka_cluster_name
   broker_instance_type = var.msk_kafka_instance_type
+  broker_volume_size   = 1
 
   client_allow_unauthenticated = true
 }
