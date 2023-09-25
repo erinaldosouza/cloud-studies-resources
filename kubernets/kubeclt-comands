@@ -1,5 +1,5 @@
 Connect to EKS Cluster:
-aws eks --region $(terraform output -raw region) update-kubeconfig     --name $(terraform output -raw public_cluster_name)
+aws eks --region $(terraform output -raw region) update-kubeconfig     --name $(terraform output -raw public_eks_cluster_name)
 
 Get nodes
 kubectl get nodes

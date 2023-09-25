@@ -15,11 +15,32 @@ module "vpc" {
   private_subnets = var.private_subnets_cidr
   intra_subnets   = var.intra_subnets_cidr
 
-  enable_nat_gateway      = true
+  enable_nat_gateway      = false
   single_nat_gateway      = true
   enable_dns_hostnames    = true
   map_public_ip_on_launch = true
 
+  public_inbound_acl_rules = [
+    {
+      rule_action = "allow"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "http"
+      cidr_block  = "0.0.0.0/0"
+    }
+  ]
+
+  public_outbound_acl_rules = [
+    {
+      rule_action = "allow"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "http"
+      cidr_block  = "0.0.0.0/0"
+    }
+  ]
+
+  /*
   public_subnet_tags = {
     "kubernetes.io/cluster/public-${local.cluster_name}" = "shared"
     "kubernetes.io/role/elb"                      = 1
@@ -29,5 +50,7 @@ module "vpc" {
     "kubernetes.io/cluster/private-${local.cluster_name}" = "shared"
     "kubernetes.io/role/elb"                      = 1
   }
+
+  */
 
 }

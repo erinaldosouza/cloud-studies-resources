@@ -4,8 +4,8 @@ output "apigateway_api_endpoint" {
   value       = module.apigateway-v2.apigatewayv2_api_api_endpoint
 }
 
-output "acm_certificate_arn" {
-  description = "Certificate ARN"
-  value       = module.acm.acm_certificate_arn
+output "api_gateway_security_group_ids" {
+  description = "API Gateway security group ids"
+  value       = [module.api_gateway_security_group.security_group_id]
 }
 

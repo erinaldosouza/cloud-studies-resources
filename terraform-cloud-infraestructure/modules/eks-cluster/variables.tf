@@ -1,10 +1,16 @@
+variable "cluster_name" {
+  description = "Value of VPC Id"
+  type        = string
+  default     = ""
+}
+
 variable "vpc_id" {
   description = "Value of VPC Id"
   type        = string
   default     = ""
 }
 
-variable "public_k8s_subnet_ids" {
+variable "k8s_subnet_ids" {
   description = "Value of k8s private subnets"
   type        = list(any)
   default     = []
@@ -21,3 +27,4 @@ variable "region" {
   type        = string
   default     = ""
 }
+

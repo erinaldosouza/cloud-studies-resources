@@ -1,0 +1,8 @@
+Erros superados
+
+- ECS service cant assume role: ECS sem permissões para executar as tasks
+- Container couldn pull image: Configuração dos registry da imag incorreto
+- Task failed to pull image: Container deficinion sem as configurações de acesso a internet
+- Task health check unkown: container definition sme as configurações de health check
+- ELB target group health check failed: Target group sem as configurações de health check e instancia do container sem regras de trafico com security group in/outbound rules
+- ELB com INTEGRATION_NETWORK_FAILURE: ELB roteando para IPs publicos das instancias ao iviés dos IPs privados. Bastou seter o internal = true
