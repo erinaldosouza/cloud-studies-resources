@@ -1,11 +1,27 @@
 provider "aws" {
   region = var.region
+
+  # Make it faster by skipping something
+  skip_metadata_api_check     = true
+  skip_region_validation      = true
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+
+  # Default tags to all aws services / resources
   default_tags {
     tags = {
       Environment = "devops-cloud-studies"
       Project     = "DevOps Cloud Environment"
     }
   }
+}
+
+locals {
+  # This id is copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html
+  default_response_headers_policy_id =  "67f7725c-6f97-4210-82d7-5512b31e9d03"
+
+  # This is id for SecurityHeadersPolicy copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
+  default_cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"
 }
 
 /* Cria uma VPC com subnets publicas */
@@ -18,8 +34,8 @@ module "vpc" {
   azs             = var.azs
   public_subnets  = var.public_subnets_cidr
 
-  enable_nat_gateway      = false
-  single_nat_gateway      = true
+  enable_nat_gateway = false
+  single_nat_gateway = true
 
 }
 
@@ -37,7 +53,7 @@ module "alb" {
   target_groups = [
     {
       name_prefix      = "tg-"
-      backend_protocol = "http"
+      backend_protocol = "HTTP"
       backend_port     = 80
       target_type      = "ip"
       health_check = {
@@ -48,7 +64,7 @@ module "alb" {
         healthy_threshold   = 3
         unhealthy_threshold = 3
         timeout             = 5
-        protocol            = "http"
+        protocol            = "HTTP"
         matcher             = "200-399"
       }
     }
@@ -57,7 +73,7 @@ module "alb" {
   http_tcp_listeners = [
     {
       port               = 80
-      protocol           = "http"
+      protocol           = "HTTP"
       target_group_index = 0
       action_type        = "forward"
     }
@@ -159,7 +175,7 @@ module "apigateway-v2" {
   description            = "API Gateway for cloud studies"
   create_api_domain_name = false
 
-  default_stage_access_log_format           = "{ 'requestId':'$context.requestId', 'ip': '$context.identity.sourceIp', 'requestTime':'$context.requestTime', 'httpMethod':'$context.httpMethod','routeKey':'$context.routeKey', 'status':'$context.status','protocol':'$context.protocol', 'errorResponeType': '$context.error.responseType', 'responseLength':'$context.responseLength' , 'authorizerError':'$context.authorizer.error', 'errorMessage':'$context.error.message', 'msgString':'$context.error.messageString'}"
+  default_stage_access_log_format          = "{ 'requestId':'$context.requestId', 'ip': '$context.identity.sourceIp', 'requestTime':'$context.requestTime', 'httpMethod':'$context.httpMethod','routeKey':'$context.routeKey', 'status':'$context.status','protocol':'$context.protocol', 'errorResponeType': '$context.error.responseType', 'responseLength':'$context.responseLength' , 'authorizerError':'$context.authorizer.error', 'errorMessage':'$context.error.message', 'msgString':'$context.error.messageString'}"
   default_stage_access_log_destination_arn = module.cloudwatch_log-group.cloudwatch_log_group_arn
 
   integrations = {
@@ -189,6 +205,7 @@ module "apigateway-v2" {
 
 }
 
+/* Cria o log group para logs do API Gateway */
 module "cloudwatch_log-group" {
   source  = "terraform-aws-modules/cloudwatch/aws//modules/log-group"
   version = "4.3.0"
@@ -197,3 +214,315 @@ module "cloudwatch_log-group" {
   retention_in_days = 1
 
 }
+
+/* Cria uma key para criptografias */
+/*
+module "kms" {
+  source  = "terraform-aws-modules/kms/aws"
+  version = "2.0.1"
+
+  description = "Chave para testes com KMS"
+  aliases = ["alias/kmstestkey"]
+  enable_key_rotation = true
+
+}
+*/
+/* Cria uma secret com um valor fixo (valor do atributo "secret_string") que deve ser critografado usando a Key criada anteriormente */
+/*
+module "secrets-manager" {
+  source  = "terraform-aws-modules/secrets-manager/aws"
+  version = "1.1.1"
+
+  name = "cloud-studies-secret"
+  description = "Segredo para testes com Secret Manager"
+  kms_key_id = module.kms.key_id
+  secret_string = jsonencode({ data : "secret value here" })
+
+}
+*/
+/* Cria o S# para armezenar a aplicação front an statica (ex: um angular app, arquivos .html etc) */
+module "s3-bucket" {
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = "3.15.1"
+
+ # create_bucket = false
+#  control_object_ownership = true
+#  object_ownership         = "BucketOwnerPreferred"
+  bucket                   = "s3-bkt-cloud-studies"
+  force_destroy            = true
+  # attach_public_policy   = false
+ # block_public_acls        = false
+  #block_public_policy      = false
+  #ignore_public_acls       = false
+ # attach_policy            = true
+  #acl                      = "public-read"
+ #restrict_public_buckets  = false
+
+ /* policy = tostring(jsonencode(
+    {
+      Version: "2012-10-17"
+      Statement : [
+        {
+          Sid : "AllowEveryoneReadOnlyAccess"
+          Principal : "*"
+          Effect : "Allow"
+          Action : [
+            "s3:*"
+          ]
+          Resource: "arn:aws:s3:::s3-bkt-cloud-studies"
+        }
+      ]
+    }
+  ))*/
+  # allowed_kms_key_arn = module.kms.key_arn
+
+  website = {
+
+    index_document = "index.html"
+    error_document = "error.html"
+    cors_rule = [
+      {
+        allowed_methods = ["GET", "PUT", "POST", "DELETE"]
+        allowed_origins = ["*"]
+        allowed_headers = ["*"]
+        expose_headers  = ["ETag"]
+        max_age_seconds = 3000
+      }
+    ]
+   /* routing_rules = [
+      {
+        condition = {
+          key_prefix_equals = "docs/"
+        },
+        redirect = {
+          replace_key_prefix_with = "documents/"
+        }
+      },
+      {
+        condition = {
+          http_error_code_returned_equals = 404
+          key_prefix_equals               = "archive/"
+        },
+        redirect = {
+          host_name          = "archive.myhost.com"
+          http_redirect_code = 301
+          protocol           = "https"
+          replace_key_with   = "not_found.html"
+        }
+      }
+    ]*/
+  }
+
+}
+
+module "dir" {
+  source  = "hashicorp/dir/template"
+  version = "1.0.2"
+
+  base_dir = "${path.module}/my-precoocked-startup-app"
+  template_vars = {
+    # Pass in any values that you wish to use in your templates.
+    vpc_id = module.vpc.vpc_id
+  }
+}
+
+/*
+resource "null_resource" "remove_and_upload_to_s3" {
+  provisioner "local-exec" {
+    command = "aws s3 sync ${path.module}/s3Contents s3://${module.s3-bucket.s3_bucket_id}"
+  }
+}
+*/
+
+module "s3-bucket_object" {
+  source  = "terraform-aws-modules/s3-bucket/aws//modules/object"
+  version = "3.15.1"
+
+  depends_on = [module.s3-bucket]
+
+  # create = false
+  for_each      = module.dir.files
+  bucket        = module.s3-bucket.s3_bucket_id
+  file_source   = each.value.source_path
+  content_type  = each.value.content_type
+  key           = each.key
+  acl           = null
+  force_destroy = true
+
+
+
+}
+
+/* Cria uma cloud front para armazenamento de conteúdo estatico do S3 e tambem do API Gateway*/
+module "cloudfront" {
+  source  = "terraform-aws-modules/cloudfront/aws"
+  version = "3.2.1"
+
+  price_class = "PriceClass_All"
+
+  create_origin_access_control = true
+  origin_access_control = {
+    front-app-s3 = {
+      description      = "CloudFront access to S3"
+      origin_type      = "s3"
+      signing_behavior = "always"
+      signing_protocol = "sigv4"
+    }
+  }
+
+  origin = {
+    web-api = {
+      domain_name          = replace(module.apigateway-v2.apigatewayv2_api_api_endpoint, "https://", "")
+      custom_origin_config = {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "match-viewer"
+        origin_ssl_protocols   = ["TLSv1", "TLSv1.1", "TLSv1.2"]
+      }
+    }
+
+    front-app-s3 = {
+      domain_name      = module.s3-bucket.s3_bucket_bucket_regional_domain_name
+      origin_access_control = "front-app-s3"
+    }
+
+  }
+
+  default_cache_behavior = {
+    path_pattern           = "/*"
+    target_origin_id       = "web-api"
+    viewer_protocol_policy = "redirect-to-https"
+
+    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    cached_methods  = ["GET", "HEAD"]
+    compress        = true
+    query_string    = true
+
+    min_ttl     = 3600
+    default_ttl = 3600
+    max_ttl     = 3600
+
+    cache_policy_id            = local.default_cache_policy_id
+    response_headers_policy_id = local.default_response_headers_policy_id
+    use_forwarded_values       = false
+  }
+
+  ordered_cache_behavior = [
+    {
+      path_pattern           = "/api/*"
+      target_origin_id       = "web-api"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = true
+
+      min_ttl     = 3600
+      default_ttl = 3600
+      max_ttl     = 3600
+
+      cache_policy_id            = local.default_cache_policy_id
+      response_headers_policy_id = local.default_response_headers_policy_id
+      use_forwarded_values       = false
+    },
+
+    {
+      path_pattern           = "/*.html"
+      target_origin_id       = "front-app-s3"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = true
+
+      min_ttl     = 3600
+      default_ttl = 3600
+      max_ttl     = 3600
+
+      cache_policy_id            = local.default_cache_policy_id
+      response_headers_policy_id = local.default_response_headers_policy_id
+      use_forwarded_values       = false
+    },
+    {
+      path_pattern           = "/*.js"
+      target_origin_id       = "front-app-s3"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = true
+
+      min_ttl     = 3600
+      default_ttl = 3600
+      max_ttl     = 3600
+
+      cache_policy_id            = local.default_cache_policy_id
+      response_headers_policy_id = local.default_response_headers_policy_id
+      use_forwarded_values       = false
+    },
+    {
+      path_pattern           = "/*.css"
+      target_origin_id       = "front-app-s3"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = true
+
+      min_ttl     = 3600
+      default_ttl = 3600
+      max_ttl     = 3600
+
+      cache_policy_id            = local.default_cache_policy_id
+      response_headers_policy_id = local.default_response_headers_policy_id
+      use_forwarded_values       = false
+    },
+    {
+      path_pattern           = "/*.ico"
+      target_origin_id       = "front-app-s3"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = true
+
+      min_ttl     = 3600
+      default_ttl = 3600
+      max_ttl     = 3600
+
+      cache_policy_id            = local.default_cache_policy_id
+      response_headers_policy_id = local.default_response_headers_policy_id
+      use_forwarded_values       = false
+    }
+
+  ]
+
+}
+
+
+/*
+
+module "rds" {
+  source  = "terraform-aws-modules/rds/aws"
+  version = "6.1.1"
+
+  identifier = "rds-cloud-studies"
+  db_name = "mydql-db"
+  engine = "mysql"
+  family = "MySQL-8"
+  engine_version = "8.0.33"
+  major_engine_version = "8"
+  instance_class = "db.t4g.micro"
+
+  subnet_ids = module.main_vpc.public_subnet_ids
+
+  tags = {
+    Environment = "cloud-studies"
+  }
+}
+*/

@@ -13,3 +13,4 @@
 /terraform-cloud-infraestructure/modules/main-vpc/.terraform.lock.hcl
 /terraform-cloud-infraestructure/modules/eks-cluster/.terraform.lock.hcl
 /terraform-cloud-infraestructure/modules/public-eks-cluster/.terraform.lock.hcl
+/.idea/

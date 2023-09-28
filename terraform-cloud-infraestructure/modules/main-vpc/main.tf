@@ -20,26 +20,6 @@ module "vpc" {
   enable_dns_hostnames    = true
   map_public_ip_on_launch = true
 
-  public_inbound_acl_rules = [
-    {
-      rule_action = "allow"
-      from_port   = 0
-      to_port     = 0
-      protocol    = "http"
-      cidr_block  = "0.0.0.0/0"
-    }
-  ]
-
-  public_outbound_acl_rules = [
-    {
-      rule_action = "allow"
-      from_port   = 0
-      to_port     = 0
-      protocol    = "http"
-      cidr_block  = "0.0.0.0/0"
-    }
-  ]
-
   /*
   public_subnet_tags = {
     "kubernetes.io/cluster/public-${local.cluster_name}" = "shared"
