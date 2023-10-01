@@ -14,7 +14,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
 
-  default_response_headers_policy_id =  "67f7725c-6f97-4210-82d7-5512b31e9d03" # This id is copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html
+  default_response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03" # This id is copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html
   default_cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"  # This is id for SecurityHeadersPolicy copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
   default_cache_ttl_seconds          = 30  # Cache time in seconds
   account_id                         = data.aws_caller_identity.current.account_id   # AWS Account ID where the infrastructure mush be provided
@@ -29,9 +29,9 @@ module "vpc" {
   name             = var.vpc_name
   cidr             = var.vpc_cidr
   azs              = var.azs
-  public_subnets   = var.public_subnets_cidr
-  # database_subnets = var.database_subnets_cidr
-  # create_database_subnet_route_table = true
+  # public_subnets   = var.public_subnets_cidr
+  database_subnets = var.database_subnets_cidr
+  create_database_subnet_route_table = true
 
   enable_nat_gateway = false
   single_nat_gateway = true
@@ -39,6 +39,7 @@ module "vpc" {
 }
 
 /* Creates a inbound ; outbound traffic security group that allow internet traffic*/
+/*
 module "in_out_traffic_security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4.0"
@@ -52,8 +53,9 @@ module "in_out_traffic_security_group" {
   ingress_cidr_blocks = ["0.0.0.0/0"]
 
 }
-
+*/
 /* Creates an ALB to distribute the workload among available services */
+/*
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "8.7.0"
@@ -94,8 +96,9 @@ module "alb" {
   ]
 
 }
-
+*/
 /* Creates a role to allow ECS to run properly  */
+/*
 module "ecs_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
   version = "5.30.0"
@@ -105,8 +108,9 @@ module "ecs_role" {
   trusted_role_services = ["ecs-tasks.amazonaws.com"]
 
 }
-
+*/
 /* Creates an ECS Cluster in order to run the esc services*/
+/*
 module "ecs_cluster" {
   source  = "terraform-aws-modules/ecs/aws//modules/cluster"
   version = "5.2.2"
@@ -116,8 +120,9 @@ module "ecs_cluster" {
   task_exec_iam_role_path = module.ecs_role.iam_role_path
 
 }
-
+*/
 /* Creates an ECS Service in order to run the containers */
+/*
 module "ecs_service" {
   source  = "terraform-aws-modules/ecs/aws//modules/service"
   version = "5.2.2"
@@ -163,8 +168,9 @@ module "ecs_service" {
     }
   }
 }
-
+*/
 /* Creaes an API Gateway that integrates via VPC Link to expose the services / APIs to the public internet  */
+/*
 module "apigateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
   version = "2.2.2"
@@ -203,8 +209,9 @@ module "apigateway" {
   }
 
 }
-
+*/
 /* Creates a Cloud Watch Log Group to the API Gateway */
+/*
 module "cloudwatch_apigw_log_group" {
   source  = "terraform-aws-modules/cloudwatch/aws//modules/log-group"
   version = "4.3.0"
@@ -213,8 +220,9 @@ module "cloudwatch_apigw_log_group" {
   retention_in_days = 1
 
 }
-
+*/
 /* Creates an S3 Bucket in order to host the static website files (.html, .js, .css and images etc) */
+/*
 module "s3_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "3.15.1"
@@ -248,8 +256,9 @@ module "s3_bucket" {
   )
 
 }
-
+*/
 /* Creates a temporary memory directory to hold references to the website files that are in this project root, in order to upload to S3 Bucket */
+/*
 module "dir" {
   source  = "hashicorp/dir/template"
   version = "1.0.2"
@@ -260,8 +269,9 @@ module "dir" {
     vpc_id = module.vpc.vpc_id
   }
 }
-
+*/
 /* Creates S3 objects using the dir module references to upload the files one by one */
+/*
 module "s3_bucket_object" {
   source  = "terraform-aws-modules/s3-bucket/aws//modules/object"
   version = "3.15.1"
@@ -277,8 +287,9 @@ module "s3_bucket_object" {
   force_destroy = true
 
 }
-
+*/
 /* Creates a Cloudfront integrated to S3 Bucket to Cache website content and improve performance */
+/*
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "3.2.1"
@@ -324,25 +335,46 @@ module "cloudfront" {
   }
 
 }
-
-/*
+*/
+/* Creates a Multi AZ DB Instance (not a cluster) and also a Standby fail over replica using RDS for MySQL engine  */
 module "rds" {
   source  = "terraform-aws-modules/rds/aws"
   version = "6.1.1"
 
-  identifier = "rds-cloud-studies"
-  db_name = "mydql-db"
-  engine = "mysql"
-  family = "MySQL-8"
+  allocated_storage      = 20
+  max_allocated_storage  = 20
+  storage_type           = "gp3"
+  multi_az               = true
+  engine                 = "mysql"
+  engine_version         = "8.0"
+  family                 = "mysql8.0" # DB parameter group
+  major_engine_version   =  "8.0"      # DB option group
+  password               = "12345678"
+  username               = "username"
+  identifier             = "rds-cloud-studies"
+  db_name                = "mydqldb"
+  instance_class         = "db.t4g.micro"
+  subnet_ids             = module.vpc.database_subnets
+  vpc_security_group_ids = [module.vpc.default_security_group_id]
+  create_db_subnet_group = true
+  availability_zone = "s"
+
+}
+/*
+module "aurora" {
+  source  = "terraform-aws-modules/rds-aurora/aws"
+  version = "4.3.0"
+
+  name = "auroradb"
+  engine = "aurora-mysql"
   engine_version = "8.0.33"
-  major_engine_version = "8"
-  instance_class = "db.t4g.micro"
-  subnet_ids = module.vpc.database_subnets
+  instance_type = "gp3"
+
+  vpc_id = module.vpc.vpc_id
+  subnets = module.vpc.database_subnets
 
 }
 */
-
-
 /* Cria uma key para criptografias */
 /*
 module "kms" {

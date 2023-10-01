@@ -1,4 +1,5 @@
 
+/*
 output "region" {
   description = "AWS Region"
   value       = var.region
@@ -53,6 +54,8 @@ output "cloudfront" {
   description = "Distribution domain name"
   value       = module.cloudfront.cloudfront_distribution_domain_name
 }
+*/
+
 
 /*
 output "apigateway_api_endpoint" {
