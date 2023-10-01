@@ -17,13 +17,19 @@ variable "vpc_cidr" {
 }
 
 variable "private_subnets_cidr" {
-  description = "Value of k8s private subnets"
+  description = "Value of private subnets"
   type        = list(any)
   default     = []
 }
 
 variable "public_subnets_cidr" {
-  description = "Value of k8s public subnets"
+  description = "Value of public subnets"
+  type        = list(any)
+  default     = []
+}
+
+variable "database_subnets_cidr" {
+  description = "Value of database public subnets"
   type        = list(any)
   default     = []
 }
