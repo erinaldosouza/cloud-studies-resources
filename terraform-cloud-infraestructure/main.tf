@@ -6,24 +6,22 @@ provider "aws" {
     tags = {
       Project     = "Production-ready AWS Cloud Environment"
       Environment = "DevOps Cloud Studies"
-      Description = "A basic but good enough AWS cloud environment built to accelerate low budget backyards startups when it comes to Delivering on Production Environment"
-      PoweredBy   = "Erinaldo Souza. Developer since 2023, Web System Architecture and Design Especialis, Oracle and AWS Certified Professional, DevOps enthusiast. A long term learner"
     }
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
-  # This id is copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html
-  default_response_headers_policy_id =  "67f7725c-6f97-4210-82d7-5512b31e9d03"
 
-  # This is id for SecurityHeadersPolicy copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
-  default_cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  default_response_headers_policy_id =  "67f7725c-6f97-4210-82d7-5512b31e9d03" # This id is copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html
+  default_cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"  # This is id for SecurityHeadersPolicy copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
+  default_cache_ttl_seconds          = 30  # Cache time in seconds
+  account_id                         = data.aws_caller_identity.current.account_id   # AWS Account ID where the infrastructure mush be provided
 
-  # Cache time in seconds
-  default_cache_ttl_seconds          = 30
 }
 
-/* Cria uma VPC com subnets publicas */
+/* Creates a VPC and subnets */
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.0.0"
@@ -40,12 +38,12 @@ module "vpc" {
 
 }
 
-/* Cria um security group para ser usado no API Gateway que será criado */
+/* Creates a inbound ; outbound traffic security group that allow internet traffic*/
 module "in_out_traffic_security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4.0"
 
-  name        = "default-trafic-sg-cloud-studies"
+  name        = "default-traffic-sg-cloud-studies"
   description = "API Gateway group for example usage"
   vpc_id      = module.vpc.vpc_id
 
@@ -55,7 +53,7 @@ module "in_out_traffic_security_group" {
 
 }
 
-/* Cria um ALB na VPC para fazer o balanceamento entre as suas subnets */
+/* Creates an ALB to distribute the workload among available services */
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "8.7.0"
@@ -72,7 +70,7 @@ module "alb" {
       backend_protocol = "HTTP"
       backend_port     = 80
       target_type      = "ip"
-      health_check = {
+      health_check     = {
         enabled             = true
         interval            = 6
         path                = "/"
@@ -97,30 +95,29 @@ module "alb" {
 
 }
 
-
-/* Cria uma IAM Role com Admin Permissions (default) */
-module "iam_assumable_role" {
+/* Creates a role to allow ECS to run properly  */
+module "ecs_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
   version = "5.30.0"
 
-  role_name             = "ecs-cluster-role"
+  role_name             = "ecs-task-role"
   role_description      = "IAM Role para cloud studies"
   trusted_role_services = ["ecs-tasks.amazonaws.com"]
 
 }
 
-/* Cria um Cluster ECS */
+/* Creates an ECS Cluster in order to run the esc services*/
 module "ecs_cluster" {
   source  = "terraform-aws-modules/ecs/aws//modules/cluster"
   version = "5.2.2"
 
   cluster_name            = "ecs-cluster-cloud-studies"
-  task_exec_iam_role_name = module.iam_assumable_role.iam_role_name
-  task_exec_iam_role_path = module.iam_assumable_role.iam_role_path
+  task_exec_iam_role_name = module.ecs_role.iam_role_name
+  task_exec_iam_role_path = module.ecs_role.iam_role_path
 
 }
 
-/* Cria um Service ECS no cluster, as subnets, a role e o load balancer criado anteriormente */
+/* Creates an ECS Service in order to run the containers */
 module "ecs_service" {
   source  = "terraform-aws-modules/ecs/aws//modules/service"
   version = "5.2.2"
@@ -131,9 +128,9 @@ module "ecs_service" {
   subnet_ids       = module.vpc.public_subnets
   assign_public_ip = true // Necessary to pull images from public container registries
 
-  iam_role_arn            = module.iam_assumable_role.iam_role_arn
-  tasks_iam_role_arn      = module.iam_assumable_role.iam_role_arn
-  task_exec_iam_role_arn  = module.iam_assumable_role.iam_role_arn
+  iam_role_arn            = module.ecs_role.iam_role_arn
+  tasks_iam_role_arn      = module.ecs_role.iam_role_arn
+  task_exec_iam_role_arn  = module.ecs_role.iam_role_arn
   security_group_ids      = [module.in_out_traffic_security_group.security_group_id]
 
   container_definitions = {
@@ -167,8 +164,8 @@ module "ecs_service" {
   }
 }
 
-/* Cria um API Gateway para acessar o cluster ECS via VPC Link */
-module "apigateway-v2" {
+/* Creaes an API Gateway that integrates via VPC Link to expose the services / APIs to the public internet  */
+module "apigateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
   version = "2.2.2"
 
@@ -177,7 +174,7 @@ module "apigateway-v2" {
   create_api_domain_name = false
 
   default_stage_access_log_format          = "{ 'requestId':'$context.requestId', 'ip': '$context.identity.sourceIp', 'requestTime':'$context.requestTime', 'httpMethod':'$context.httpMethod','routeKey':'$context.routeKey', 'status':'$context.status','protocol':'$context.protocol', 'errorResponeType': '$context.error.responseType', 'responseLength':'$context.responseLength' , 'authorizerError':'$context.authorizer.error', 'errorMessage':'$context.error.message', 'msgString':'$context.error.messageString'}"
-  default_stage_access_log_destination_arn = module.cloudwatch_log-group.cloudwatch_log_group_arn
+  default_stage_access_log_destination_arn = module.cloudwatch_apigw_log_group.cloudwatch_log_group_arn
 
   integrations = {
 
@@ -207,8 +204,8 @@ module "apigateway-v2" {
 
 }
 
-/* Cria o log group para logs do API Gateway */
-module "cloudwatch_log-group" {
+/* Creates a Cloud Watch Log Group to the API Gateway */
+module "cloudwatch_apigw_log_group" {
   source  = "terraform-aws-modules/cloudwatch/aws//modules/log-group"
   version = "4.3.0"
 
@@ -217,17 +214,42 @@ module "cloudwatch_log-group" {
 
 }
 
-/* Cria o S# para armezenar a aplicação front an statica (ex: um angular app, arquivos .html etc) */
-module "s3-bucket" {
+/* Creates an S3 Bucket in order to host the static website files (.html, .js, .css and images etc) */
+module "s3_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "3.15.1"
 
-  bucket          = "s3-bkt-cloud-studies"
-  force_destroy   = true
+  force_destroy            = true
+  attach_policy            = true
+  bucket                   = "s3-bkt-cloud-studies"
+
+  policy = jsonencode(
+    {
+      Version: "2012-10-17"
+      Statement : [
+        {
+          Sid : "AllowCloudfrontS3Integration"
+          Principal : {
+            Service: "cloudfront.amazonaws.com"
+          }
+          Effect : "Allow"
+          Action : [
+            "s3:GetObject"
+          ]
+          Resource: "arn:aws:s3:::s3-bkt-cloud-studies/*"
+          Condition: {
+            ArnEquals: {
+              "aws:SourceArn" = [module.cloudfront.cloudfront_distribution_arn]
+            }
+          }
+        }
+      ]
+    }
+  )
 
 }
 
-/* Mapeia referencias aos arquivos da aplicacao angular para a realizacao do deploy no S3 Bucket */
+/* Creates a temporary memory directory to hold references to the website files that are in this project root, in order to upload to S3 Bucket */
 module "dir" {
   source  = "hashicorp/dir/template"
   version = "1.0.2"
@@ -239,36 +261,33 @@ module "dir" {
   }
 }
 
-/* Faz o deploy da aplicacao angular no bucket S3 criado */
-module "s3-bucket_object" {
+/* Creates S3 objects using the dir module references to upload the files one by one */
+module "s3_bucket_object" {
   source  = "terraform-aws-modules/s3-bucket/aws//modules/object"
   version = "3.15.1"
 
-  depends_on = [module.s3-bucket]
+  depends_on    = [module.s3_bucket]
 
   for_each      = module.dir.files
-
-  bucket        = module.s3-bucket.s3_bucket_id
+  bucket        = module.s3_bucket.s3_bucket_id
   file_source   = each.value.source_path
   content_type  = each.value.content_type
-  key           = "web-app/${each.key}"
+  key           = each.key
   acl           = "private"
   force_destroy = true
 
 }
 
-/* Cria uma cloud front para armazenamento de conteúdo estatico do S3 e tambem do API Gateway */
+/* Creates a Cloudfront integrated to S3 Bucket to Cache website content and improve performance */
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "3.2.1"
 
-  depends_on = [module.s3-bucket_object]
-
   price_class                  = "PriceClass_All"
   default_root_object          = "index.html"
-  create_origin_access_control = true
 
-  origin_access_control = {
+  create_origin_access_control = true
+  origin_access_control        = {
     front-app-s3 = {
       description      = "CloudFront access to S3"
       origin_type      = "s3"
@@ -279,7 +298,7 @@ module "cloudfront" {
 
   origin = {
     front-app-s3 = {
-      domain_name           = module.s3-bucket.s3_bucket_bucket_regional_domain_name
+      domain_name           = module.s3_bucket.s3_bucket_bucket_regional_domain_name
       origin_access_control = "front-app-s3"
     }
   }
@@ -304,7 +323,6 @@ module "cloudfront" {
 
   }
 
-  // ordered_cache_behavior = []
 }
 
 /*

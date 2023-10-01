@@ -21,22 +21,22 @@ output "alb" {
 
 output "apigateway" {
   description = "API Gateway API ARN"
-  value       = module.apigateway-v2.apigatewayv2_api_arn
+  value       = module.apigateway.apigatewayv2_api_arn
 }
 
 output "apigateway_endpoint" {
   description = "API Gateway API ARN"
-  value       = module.apigateway-v2.apigatewayv2_api_api_endpoint
+  value       = module.apigateway.apigatewayv2_api_api_endpoint
 }
 
 output "apigateway_log_group" {
   description = "API Gateway Log Group ARN"
-  value       = module.cloudwatch_log-group.cloudwatch_log_group_arn
+  value       = module.cloudwatch_apigw_log_group.cloudwatch_log_group_arn
 }
 
 output "apigateway_vpc_link" {
   description = "API Gateway VPC Link ARN"
-  value       = module.apigateway-v2.apigatewayv2_vpc_link_arn
+  value       = module.apigateway.apigatewayv2_vpc_link_arn
 }
 
 output "ecs_cluster" {
